@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: homework-service
+  namespace: homework
+spec:
+  selector:
+  # default: type: ClusterIP
+    app: homework-app
+  ports:
+    - name: http-over-8000
+      protocol: TCP
+      port: 8000
+      # default: targetPort = port if targetPort is not specified
+

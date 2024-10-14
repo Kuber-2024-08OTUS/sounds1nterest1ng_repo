@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config-m
+  namespace: homework
+data:
+  nginx.conf: |
+    events{}
+    http {
+      server {
+          listen 8000;
+          root /homework;
+
+          location / {
+          }
+          location /metrics.html {
+          }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homework-deployment
+  namespace: homework
+  labels:
+    app: homework-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: homework-app
+  template:
+    metadata:
+      labels:
+        app: homework-app
+    spec:
+      serviceAccountName: monitoring
+      nodeSelector:
+        homework: "true"
+      volumes:
+      - name: shared-volume
+        persistentVolumeClaim: # mount pvc instead of emptyDir
+          claimName: homework-pvc
+      - name: config-m-volume
+        configMap:
+          name: nginx-config-m
+      - name: cm-volume
+        configMap: # mount ConfigMap to file URL
+          name: hw-config-w-envs
+          items:
+          - key: "custom.values"
+            path: "file"
+      initContainers:
+      - name: init-container
+        image: busybox:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "<html><body><h1>Hello from Homework Pod!</h1></body></html>" > /init/index.html
+          sleep 10
+          curl -vv --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -X GET 'https://kubernetes.default.svc/metrics' --header "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -o /init/metrics.html
+          sleep 10
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /init
+      containers:
+      - name: web-server
+        image: nginx:latest
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: shared-volume
+          mountPath: /homework
+        - name: config-m-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: cm-volume
+          mountPath: /homework/conf # mount ConfigMap into path /homework/conf
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /homework/index.html"]
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "250m"
+          limits:
+            memory: "400Mi"
+            cpu: "500m"
+        # command: ["/bin/sh", "-c"]
+        # args:
+        # - |
+        #   TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        #   CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        #   curl --cacert $CACERT -X GET 'https://kubernetes.default.svc/metrics' --header "Authorization: Bearer $TOKEN" -o /homework/metrics.html
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1

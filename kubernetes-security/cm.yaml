@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hw-config-w-envs
+  namespace: homework
+data: 
+  custom.values: |
+    "HW-ENV-1": "hw-value-1",
+    "HW-ENV-2": "hw-value-2",
+    "HW-ENV-3": "hw-value-3",
+    "check": "true"

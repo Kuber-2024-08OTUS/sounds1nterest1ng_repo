@@ -1,0 +1,120 @@
+replicaCount: 3
+
+namespace: "homework"
+
+label:
+  app: "homework-app"
+
+deployment:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+initImage:
+  name: busybox
+  tag: latest
+  pullPolicy: IfNotPresent
+
+mainImage:
+  name: nginx
+  tag: 1.21
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: monitoring
+
+serviceAdminAccount:
+  create: true
+  name: cd
+
+rbac:
+  rules:
+    apiGroups:
+      resources: ["pods", "nodes", "services", "endpoints"]
+      verbs: ["get", "list", "watch"]
+    nonResourceURLs: 
+      value: ["/metrics"]
+      verbs: ["get", "list"]
+
+service:
+  name: http-over-8000
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: homework.otus
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: homework-service
+              port:
+                name: http-over-8000
+        - path: /homepage
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: homework-service
+              port:
+                name: http-over-8000
+
+persistence:
+  volume:
+    name: "shared-volume"
+  volumeClaim:
+    name: "homework-pvc"
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  storageClass:
+    name: homework-sc
+    provisioner: "kubernetes.io/minikube-hostpath"
+    reclaimPolicy: Retain
+    volumeBindingMode: WaitForFirstConsumer
+
+resources:
+  requests:
+    memory: "200Mi"
+    cpu: "250m"
+  limits:
+    memory: "400Mi"
+    cpu: "500m"
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+configMap:
+  name: "hw-config-w-envs"
+  enabled: true
+  customConfig: |
+    "HW-ENV-1": "hw-value-1",
+    "HW-ENV-2": "hw-value-2",
+    "HW-ENV-3": "hw-value-3",
+    "check": "true"
+
+nginxConfig:
+  name: nginx-config-m
+  value: |
+    events{}
+    http {
+      server {
+        listen 8000;
+        root /homework;
+
+        location / {
+        }
+        location /metrics.html {
+        }
+      }
+    }

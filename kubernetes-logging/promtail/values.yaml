@@ -1,0 +1,17 @@
+fullnameOverride: promtail-hw
+
+config:
+# publish data to loki
+  clients:
+    - url: http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push
+      tenant_id: 1
+
+# Leave it here by default to schedule Pods for all node-groups
+nodeSelector: {}
+
+# -- Tolerations for pods. By default, pods will be scheduled on master/control-plane nodes.
+tolerations:
+- key: "node-role"
+  operator: "Equal"
+  value: "infra"
+  effect: "NoSchedule"

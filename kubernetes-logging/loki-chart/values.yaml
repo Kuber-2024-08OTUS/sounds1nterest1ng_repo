@@ -1,0 +1,91 @@
+fullnameOverride: loki
+
+nodeSelector:
+  node-role: infra-lbl
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+    - from: "2024-01-01"
+      store: tsdb
+      index:
+        prefix: loki_index_
+        period: 24h
+      object_store: s3
+      schema: v13
+  storage:
+    type: 's3'
+    bucketNames:
+      chunks: hw-logging-s3
+      ruler: hw-logging-s3
+      admin: hw-logging-s3
+    s3:
+      endpoint: storage.yandexcloud.net/hw-logging-s3
+      region: ru-central1-b
+      secretAccessKey: key*********************************Npp
+      accessKeyId: ID*******************************Your
+      s3ForcePathStyle: false
+      insecure: false
+deploymentMode: SingleBinary
+singleBinary:
+  replicas: 1
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+  nodeSelector: 
+    node-role: infra-lbl
+write:
+  replicas: 0
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+read:
+  replicas: 0
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+backend:
+  replicas: 0
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+gateway:
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+resultsCache:
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+chunksCache:
+  enabled: false
+  # tolerations:
+  # - key: "node-role"
+  #   operator: "Equal"
+  #   value: "infra"
+  #   effect: "NoSchedule"
+  # nodeSelector: 
+  #   node-role: infra-lbl
+lokiCanary:
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"
+  nodeSelector: 
+    node-role: infra-lbl

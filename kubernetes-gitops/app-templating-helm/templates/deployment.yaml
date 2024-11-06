@@ -16,8 +16,8 @@ spec:
         app: {{ .Values.label.app }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
-      nodeSelector:
-        homework: "true"
+      nodeSelector: 
+        node-role: payload
       volumes:
       - name: {{ .Values.persistence.volume.name }}
         persistentVolumeClaim:

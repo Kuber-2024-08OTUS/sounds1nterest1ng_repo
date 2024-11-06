@@ -33,8 +33,8 @@ spec:
       labels:
         app: homework-app
     spec:
-      nodeSelector:
-        homework: "true"
+      nodeSelector: 
+        node-role: payload
       volumes:
       - name: shared-volume
         emptyDir: {}

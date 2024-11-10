@@ -1,0 +1,11 @@
+global:
+  # -- Default node selector for all components
+  nodeSelector: 
+    node-role: infra-lbl
+
+  # -- Default tolerations for all components
+  tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "infra"
+    effect: "NoSchedule"

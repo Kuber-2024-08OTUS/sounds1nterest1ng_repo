@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.namespace }}-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.label.app }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.label.app }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.label.app }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      nodeSelector: 
+        node-role: payload
+      volumes:
+      - name: {{ .Values.persistence.volume.name }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.volumeClaim.name }}
+      - name: config-m-volume
+        configMap:
+          name: {{ .Values.nginxConfig.name }}
+      - name: cm-volume
+        configMap:
+          name: {{ .Values.configMap.name | toYaml | nindent 12 }}
+          items:
+          - key: "custom.values"
+            path: "file"
+      initContainers:
+      - name: init-container
+        image: "{{ .Values.initImage.name }}:{{ .Values.initImage.tag }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "<html><body><h1>Hello from Homework Pod!</h1></body></html>" > /init/index.html
+          sleep 10
+          curl -vv --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -X GET 'https://kubernetes.default.svc/metrics' --header "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -o /init/metrics.html
+          sleep 10
+        volumeMounts:
+        - name: {{ .Values.persistence.volume.name }}
+          mountPath: /init
+      containers:
+      - name: web-server
+        image: {{ .Values.mainImage.name }}:{{ .Values.mainImage.tag }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+        volumeMounts:
+        - name: {{ .Values.persistence.volume.name }}
+          mountPath: /homework
+        - name: config-m-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: cm-volume
+          mountPath: /homework/conf # mount ConfigMap into path /homework/conf
+          readOnly: true
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+        {{- end }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /homework/index.html"]
+        resources:
+          requests:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+  strategy:
+    type: {{ .Values.deployment.strategy.type }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.deployment.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.deployment.strategy.rollingUpdate.maxSurge }}
